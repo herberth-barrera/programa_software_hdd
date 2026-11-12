@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, redirect, abort, send_file, R
 app = Flask(__name__)
 app.secret_key = "hdd-expedientes-clave-local"
 
-# ---------- Listas para los menús desplegables ----------
+#Menu Desplegable
 SUCURSALES = ["Escalón", "Santa Elena", "Colonia Médica"]
 ESTADOS = ["Activo", "Inactivo", "Licencia médica", "Vacaciones"]
 AREAS = [
@@ -32,7 +32,7 @@ CLASE_ESTADO = {"Activo": "activo", "Inactivo": "inactivo",
 
 PREFIJO_CODIGO = "HDD-"
 
-# ---------- Archivos ----------
+# Subir Archivos
 EXTENSIONES_PERMITIDAS = (".pdf", ".doc", ".docx")
 MAX_BYTES = 1024 ** 3          # 1 GB por documento
 TAMANO_PARTE = 256 * 1024      # cada pedazo que se guarda en la base de datos
@@ -175,7 +175,7 @@ def inicio():
     return redirect("/empleados")
 
 
-# ---------- Listado ----------
+# Lista de empleados
 @app.route("/empleados")
 def listar():
     filas = obtener_empleados()
@@ -203,7 +203,7 @@ def listar():
     return render_template("empleados.html", empleados=empleados, kpis=kpis)
 
 
-# ---------- Registrar ----------
+# Registrar empleado
 @app.route("/empleados/nuevo", methods=["GET", "POST"])
 def nuevo():
     error = ""
@@ -254,7 +254,7 @@ def nuevo():
                            puestos=PUESTOS, areas=AREAS, estados=ESTADOS)
 
 
-# ---------- Modificar perfil y checklist ----------
+# Modificar Perfil
 @app.route("/empleados/editar/<int:emp_id>", methods=["GET", "POST"])
 def editar(emp_id):
     conexion = conectar()
@@ -331,7 +331,7 @@ def editar(emp_id):
                            areas=con_actual(AREAS, empleado["area"]), estados=ESTADOS)
 
 
-# ---------- Eliminar (solo perfiles sin datos asociados) ----------
+# Eliminar perfil 
 @app.route("/empleados/eliminar/<int:emp_id>", methods=["POST"])
 def eliminar(emp_id):
     conexion = conectar()
@@ -362,7 +362,7 @@ def eliminar(emp_id):
     return redirect("/empleados")
 
 
-# ---------- Archivos y versiones ----------
+# Archivos y versiones
 def texto_dias(n):
     return "1 día" if n == 1 else "%d días" % n
 
@@ -436,7 +436,7 @@ def ver_archivos(emp_id):
                            pendientes=pendientes, r=resumen_archivos)
 
 
-# ---------- Subir un archivo (crea una versión nueva) ----------
+# Subir un archivo
 @app.route("/empleados/<int:emp_id>/archivos/nuevo", methods=["GET", "POST"])
 def subir(emp_id):
     conexion = conectar()
@@ -531,7 +531,7 @@ def subir(emp_id):
                            error=error, limite_texto=formato_tamano(MAX_BYTES), max_bytes=MAX_BYTES)
 
 
-# ---------- Descargar ----------
+# Descargar archivos 
 @app.route("/archivos/<int:archivo_id>/descargar")
 def descargar(archivo_id):
     conexion = conectar()
@@ -574,7 +574,7 @@ def descargar(archivo_id):
     return respuesta
 
 
-# ---------- Resumen ----------
+# Resumen 
 @app.route("/resumen")
 def resumen():
     filas = obtener_empleados()
