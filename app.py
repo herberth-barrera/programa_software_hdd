@@ -38,7 +38,7 @@ MAX_BYTES = 1024 ** 3          # 1 GB por documento
 TAMANO_PARTE = 256 * 1024      # cada pedazo que se guarda en la base de datos
 app.config["MAX_CONTENT_LENGTH"] = MAX_BYTES + 8 * 1024 * 1024
 
-# ---------- Servicios de XAMPP que deben estar encendidos ----------
+# XAMPP
 SERVICIOS = [("Apache", "127.0.0.1", 80), ("MySQL", "127.0.0.1", 3306)]
 _cache_servicios = {"hora": 0.0, "caidos": []}
 
