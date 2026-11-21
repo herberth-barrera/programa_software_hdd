@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block publico %}
+<div class="login">
+  <section class="login-panel">
+    <img class="login-logo" src="{{ url_for('static', filename='logo.png') }}" alt="Hospital de Diagnóstico, excelencia en medicina">
+    <h1>Expedientes digitales</h1>
+    <p class="sub">Elige cómo quieres ingresar.</p>
+    <div class="pestanas" role="tablist">
+      <a href="/login?acceso=empleado" class="{% if acceso == 'empleado' %}activa{% endif %}" role="tab"><svg class="ico"><use href="#i-user"/></svg>Empleado</a>
+      <a href="/login?acceso=rrhh" class="{% if acceso == 'rrhh' %}activa{% endif %}" role="tab"><svg class="ico"><use href="#i-users"/></svg>Recursos Humanos</a>
+    </div>
+    {% if acceso == 'empleado' %}
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <form method="POST" action="/login" autocomplete="off">
+      {{ campo_csrf() }}
+      <label for="codigo">Código de empleado</label>
+      <input type="text" id="codigo" name="codigo" value="{{ codigo }}" placeholder="HDD-0001" autofocus required>
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" name="password" required>
+      <button type="submit" class="ancho"><svg class="ico"><use href="#i-lock"/></svg>Ingresar</button>
+      <p class="ayuda sep-top">Si es tu primer ingreso, tu contraseña inicial es <strong>123456789</strong>. El sistema te pedirá cambiarla.</p>
+    </form>
+    {% else %}
+    <p class="ayuda sep">El personal de Recursos Humanos ingresa con su cuenta institucional de Microsoft 365.</p>
+    {% if microsoft_listo %}
+    <a class="boton microsoft ancho" href="/auth/microsoft">
+      <svg class="ms" viewBox="0 0 21 21" aria-hidden="true"><rect width="10" height="10" fill="#f25022"/><rect x="11" width="10" height="10" fill="#7fba00"/><rect y="11" width="10" height="10" fill="#00a4ef"/><rect x="11" y="11" width="10" height="10" fill="#ffb900"/></svg>
+      Iniciar sesión con Microsoft
+    </a>
+    {% else %}
+    <p class="aviso">El acceso con Microsoft aún no está configurado. Revisa el archivo <code>.env</code> (ver README).</p>
+    {% endif %}
+    {% endif %}
+  </section>
+  <aside class="login-lado">
+    <h2>Excelencia en medicina</h2>
+    <p>Un solo lugar para el expediente documental del personal del Hospital de Diagnóstico.</p>
+    <ul>
+      <li><svg class="ico"><use href="#i-check"/></svg>Sube tus documentos desde cualquier equipo</li>
+      <li><svg class="ico"><use href="#i-check"/></svg>Control de versiones y vencimientos</li>
+      <li><svg class="ico"><use href="#i-check"/></svg>Historial de cada cambio en tu perfil</li>
+    </ul>
+  </aside>
+</div>
+{% endblock %}

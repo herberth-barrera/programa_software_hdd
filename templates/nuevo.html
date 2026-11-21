@@ -5,6 +5,7 @@
 <div class="card form-card">
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="POST" action="/empleados/nuevo">
+  {{ campo_csrf() }}
   <div class="form-grid">
     <div><label>Código de empleado</label><input type="text" value="Se genera automáticamente (HDD-0000)" disabled></div>
     <div><label>Nombre del colaborador</label><input type="text" name="nombre" value="{{ datos.nombre }}" maxlength="100"></div>

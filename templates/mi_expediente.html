@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titulo %}Mi expediente{% endblock %}
+{% block contenido %}
+{% set modo = 'empleado' %}
+<div class="card perfil">
+  <span class="avatar grande">{{ empleado.nombre|iniciales }}</span>
+  <div class="perfil-datos">
+    <h1>Hola, {{ empleado.nombre.split()[0] }}</h1>
+    <p>{{ empleado.codigo }} · {{ empleado.puesto }} · {{ empleado.area }}</p>
+    <span class="pill">{{ empleado.sucursal }}</span> <span class="sit {{ empleado.estado|clase_estado }}">{{ empleado.estado }}</span>
+  </div>
+  <a class="boton" href="/mi/subir"><svg class="ico"><use href="#i-upload"/></svg>Subir documento</a>
+</div>
+
+{% if not completo %}
+<div class="flash error"><svg class="ico"><use href="#i-alert"/></svg><span>Tu perfil está incompleto. <a href="/mi/perfil">Completa tu fecha de nacimiento, estado civil y dirección</a>.</span></div>
+{% endif %}
+
+<div class="kpis">
+  <div class="kpi"><div class="flexa"><span class="kpi-txt">Mi expediente digital</span><span class="kpi-num">{{ r.subidos }} de {{ r.total }}</span><progress class="azul" max="{{ r.total }}" value="{{ r.subidos }}"></progress></div></div>
+  <div class="kpi"><span class="kpi-ico vigente"><svg class="ico"><use href="#i-check"/></svg></span><div><span class="kpi-num">{{ r.vigentes }}</span><span class="kpi-txt">Vigentes</span></div></div>
+  <div class="kpi"><span class="kpi-ico vencido"><svg class="ico"><use href="#i-alert"/></svg></span><div><span class="kpi-num">{{ r.vencidos }}</span><span class="kpi-txt">Vencidos</span></div></div>
+  <div class="kpi"><span class="kpi-ico pendiente"><svg class="ico"><use href="#i-clock"/></svg></span><div><span class="kpi-num">{{ r.pendientes }}</span><span class="kpi-txt">Pendientes de subir</span></div></div>
+</div>
+
+<h2>Historial por documento</h2>
+{% include "_documentos.html" %}
+
+{% if pendientes %}
+<h2>Documentos pendientes</h2>
+<div class="pend-grid">
+  {% for p in pendientes %}
+  <div class="pend"><span>{{ p.nombre }}</span><a class="boton chico suave" href="/mi/subir?documento={{ p.id }}"><svg class="ico"><use href="#i-upload"/></svg>Subir</a></div>
+  {% endfor %}
+</div>
+{% endif %}
+{% include "_vista.html" %}
+{% endblock %}

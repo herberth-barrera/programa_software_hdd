@@ -9,7 +9,7 @@
   var porcentaje = document.getElementById("porcentaje");
   var mensaje = document.getElementById("msg-js");
   var maximo = parseInt(formulario.dataset.max, 10);
-  var permitidas = [".pdf", ".doc", ".docx"];
+  var permitidas = [".pdf"];
 
   function tamanoLegible(n) {
     if (n >= 1073741824) return (n / 1073741824).toFixed(2) + " GB";
@@ -27,7 +27,7 @@
   function revisar(archivo) {
     var punto = archivo.name.lastIndexOf(".");
     var extension = punto >= 0 ? archivo.name.slice(punto).toLowerCase() : "";
-    if (permitidas.indexOf(extension) === -1) return "Solo se permiten archivos PDF, DOC o DOCX.";
+    if (permitidas.indexOf(extension) === -1) return "Solo se permiten archivos PDF.";
     if (archivo.size === 0) return "El archivo está vacío.";
     if (archivo.size > maximo) return "El archivo supera el máximo de " + tamanoLegible(maximo) + ".";
     return "";

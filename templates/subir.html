@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block titulo %}Subir documento{% endblock %}
 {% block contenido %}
-<a class="volver" href="/empleados/{{ empleado.id }}/archivos"><svg class="ico"><use href="#i-back"/></svg>Volver a los archivos de {{ empleado.nombre }}</a>
+<a class="volver" href="/mi/expediente"><svg class="ico"><use href="#i-back"/></svg>Volver a mi expediente</a>
 <div class="pagina-cab"><div><h1>Subir documento</h1><p class="sub">{{ empleado.nombre }} · {{ empleado.codigo }}</p></div></div>
 <div class="dos-col">
   <div class="card form-card">
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
-    <form id="form-subida" method="POST" action="/empleados/{{ empleado.id }}/archivos/nuevo" enctype="multipart/form-data" data-max="{{ max_bytes }}">
+    <form id="form-subida" method="POST" action="/mi/subir" enctype="multipart/form-data" data-max="{{ max_bytes }}">
+      {{ campo_csrf() }}
       <div class="form-grid">
         <div class="completa">
           <label>Tipo de documento</label>
@@ -26,8 +27,8 @@
           <label class="dropzone" id="zona">
             <svg class="ico"><use href="#i-upload"/></svg>
             <strong>Arrastra el archivo aquí o haz clic para elegirlo</strong>
-            <span>PDF, DOC o DOCX · máximo {{ limite_texto }}</span>
-            <input type="file" name="archivo" id="archivo" accept=".pdf,.doc,.docx">
+            <span>Solo PDF · máximo {{ limite_texto }}</span>
+            <input type="file" name="archivo" id="archivo" accept=".pdf,application/pdf">
             <span class="elegido" id="elegido" hidden></span>
           </label>
           <div class="avance" id="avance" hidden><progress id="barra" max="100" value="0"></progress><span id="porcentaje">0 %</span></div>
@@ -36,18 +37,18 @@
       </div>
       <div class="form-pie">
         <button type="submit"><svg class="ico"><use href="#i-upload"/></svg>Subir documento</button>
-        <a class="boton secundario" href="/empleados/{{ empleado.id }}/archivos">Cancelar</a>
+        <a class="boton secundario" href="/mi/expediente">Cancelar</a>
       </div>
     </form>
   </div>
   <div class="card reglas">
     <h3>Reglas de la subida</h3>
     <ul>
-      <li>Formatos permitidos: <strong>PDF, DOC y DOCX</strong>.</li>
+      <li>Formato permitido: <strong>solo PDF</strong>.</li>
       <li>Tamaño máximo: <strong>{{ limite_texto }}</strong>.</li>
       <li>Si el documento ya existe, se guarda como una <strong>versión nueva</strong> y la anterior se conserva.</li>
       <li>El <strong>DUI</strong> exige fecha de vencimiento; en los demás documentos es opcional.</li>
-      <li>Usa solo documentos de prueba inventados, nunca un documento real.</li>
+      <li>RRHH puede ver y descargar tus documentos, pero no puede subirlos ni reemplazarlos.</li>
     </ul>
     <p class="ayuda sep-top">El archivo se guarda dentro de la base de datos (BLOB), en pedazos de 256 KB.</p>
   </div>

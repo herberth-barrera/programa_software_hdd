@@ -1,0 +1,18 @@
+{% if historial %}
+<div class="card tabla-card">
+<table class="historial">
+  <tr><th>Fecha</th><th>Quién</th><th>Tipo</th><th>Qué cambió</th></tr>
+  {% for h in historial %}
+  <tr>
+    <td class="nowrap">{{ h.fecha|fecha_hora }}</td>
+    <td>{% if h.rol_actor == 'rrhh' %}<span class="pill">RRHH</span><span class="peq">{{ h.actor }}</span>{% else %}<span class="pill">Empleado</span><span class="peq">{{ h.actor }}</span>{% endif %}</td>
+    <td><span class="tipo-h {{ h.tipo }}">{{ {'perfil': 'Perfil', 'documento': 'Documento', 'cuenta': 'Cuenta', 'expediente': 'Expediente'}.get(h.tipo, h.tipo) }}</span></td>
+    <td><strong>{{ h.campo }}</strong><br>
+      {% if h.valor_anterior %}<span class="antes">{{ h.valor_anterior }}</span> → {% endif %}<span class="despues">{{ h.valor_nuevo or '—' }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<div class="card vacio-estado"><svg class="ico"><use href="#i-history"/></svg><h3>Sin cambios registrados</h3><p class="ayuda">Aquí aparecerá cada cambio hecho en el perfil.</p></div>
+{% endif %}

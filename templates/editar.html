@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block titulo %}Modificar perfil{% endblock %}
+{% block titulo %}Editar perfil{% endblock %}
 {% block contenido %}
-<a class="volver" href="/empleados"><svg class="ico"><use href="#i-back"/></svg>Volver a empleados</a>
+<a class="volver" href="/empleados/{{ empleado.id }}"><svg class="ico"><use href="#i-back"/></svg>Volver al perfil</a>
 <div class="card perfil">
   <span class="avatar grande">{{ empleado.nombre|iniciales }}</span>
   <div class="perfil-datos">
@@ -13,8 +13,9 @@
 <div class="card form-card">
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="POST" action="/empleados/editar/{{ empleado.id }}">
+  {{ campo_csrf() }}
   <h3>Datos del perfil</h3>
-  <p class="ayuda sep">El código de empleado no se puede modificar.</p>
+  <p class="ayuda sep">El código de empleado no se puede modificar. Cada cambio queda registrado en el historial del perfil.</p>
   <div class="form-grid">
     <div><label>Código de empleado</label><input type="text" value="{{ empleado.codigo }}" disabled></div>
     <div><label>Nombre del colaborador</label><input type="text" name="nombre" value="{{ datos.nombre }}" maxlength="100"></div>
@@ -47,20 +48,17 @@
         {% endfor %}
       </select></div>
     <div><label>Fecha de ingreso</label><input type="date" name="fecha_ingreso" value="{{ datos.fecha_ingreso }}"></div>
+    <div><label>Fecha de nacimiento</label><input type="date" name="fecha_nacimiento" value="{{ datos.fecha_nacimiento }}"></div>
+    <div><label>Estado civil</label>
+      <select name="estado_civil">
+        <option value="">-- Sin dato --</option>
+        {% for x in estados_civiles %}<option value="{{ x }}" {% if datos.estado_civil == x %}selected{% endif %}>{{ x }}</option>{% endfor %}
+      </select></div>
+    <div class="completa"><label>Dirección de vivienda</label><input type="text" name="direccion" value="{{ datos.direccion }}" maxlength="255"></div>
   </div>
-  <h3 class="sep-top">Checklist del expediente</h3>
-  <p class="ayuda sep">Marca los documentos que ya fueron entregados.</p>
-  <ul class="checklist">
-    {% for d in docs %}
-    <li>
-      <input type="checkbox" id="doc{{ d.id }}" name="doc" value="{{ d.id }}" {% if d.entregado %}checked{% endif %}>
-      <label for="doc{{ d.id }}">{{ d.nombre }}</label>
-    </li>
-    {% endfor %}
-  </ul>
   <div class="form-pie">
     <button type="submit">Guardar cambios</button>
-    <a class="boton secundario" href="/empleados">Cancelar</a>
+    <a class="boton secundario" href="/empleados/{{ empleado.id }}">Cancelar</a>
   </div>
 </form>
 </div>

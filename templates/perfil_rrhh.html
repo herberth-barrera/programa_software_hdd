@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block titulo %}{{ empleado.nombre }}{% endblock %}
+{% block contenido %}
+{% set modo = 'rrhh' %}
+<a class="volver" href="/empleados"><svg class="ico"><use href="#i-back"/></svg>Volver a empleados</a>
+<div class="card perfil">
+  <span class="avatar grande">{{ empleado.nombre|iniciales }}</span>
+  <div class="perfil-datos">
+    <h1>{{ empleado.nombre }}</h1>
+    <p>{{ empleado.codigo }} · {{ empleado.puesto }} · {{ empleado.area }}</p>
+    <span class="pill">{{ empleado.sucursal }}</span> <span class="sit {{ empleado.estado|clase_estado }}">{{ empleado.estado }}</span>
+  </div>
+  <div class="acciones">
+    <a class="boton suave" href="/empleados/editar/{{ empleado.id }}"><svg class="ico"><use href="#i-edit"/></svg>Editar perfil</a>
+    {% if expediente_listo %}
+    <a class="boton" href="/empleados/{{ empleado.id }}/expediente.pdf"><svg class="ico"><use href="#i-pdf"/></svg>Descargar expediente completo (PDF)</a>
+    {% else %}
+    <button type="button" disabled title="Faltan {{ r.pendientes }} documento(s) por subir"><svg class="ico"><use href="#i-pdf"/></svg>Expediente completo (faltan {{ r.pendientes }})</button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="flexa"><span class="kpi-txt">Expediente digital</span><span class="kpi-num">{{ r.subidos }} de {{ r.total }}</span><progress class="azul" max="{{ r.total }}" value="{{ r.subidos }}"></progress></div></div>
+  <div class="kpi"><span class="kpi-ico vigente"><svg class="ico"><use href="#i-check"/></svg></span><div><span class="kpi-num">{{ r.vigentes }}</span><span class="kpi-txt">Vigentes</span></div></div>
+  <div class="kpi"><span class="kpi-ico vencido"><svg class="ico"><use href="#i-alert"/></svg></span><div><span class="kpi-num">{{ r.vencidos }}</span><span class="kpi-txt">Vencidos</span></div></div>
+  <div class="kpi"><span class="kpi-ico pendiente"><svg class="ico"><use href="#i-clock"/></svg></span><div><span class="kpi-num">{{ r.pendientes }}</span><span class="kpi-txt">Pendientes de subir</span></div></div>
+</div>
+
+<nav class="pestanas pestanas-pagina">
+  <a href="/empleados/{{ empleado.id }}?pestana=datos" class="{% if pestana == 'datos' %}activa{% endif %}"><svg class="ico"><use href="#i-user"/></svg>Datos</a>
+  <a href="/empleados/{{ empleado.id }}?pestana=documentos" class="{% if pestana == 'documentos' %}activa{% endif %}"><svg class="ico"><use href="#i-file"/></svg>Documentos</a>
+  <a href="/empleados/{{ empleado.id }}?pestana=historial" class="{% if pestana == 'historial' %}activa{% endif %}"><svg class="ico"><use href="#i-history"/></svg>Historial de cambios</a>
+</nav>
+
+{% if pestana == 'datos' %}
+<div class="dos-col iguales">
+  <div class="card panel">
+    <h3>Información laboral</h3>
+    <dl class="ficha">
+      <dt>Código</dt><dd>{{ empleado.codigo }}</dd>
+      <dt>Puesto</dt><dd>{{ empleado.puesto }}</dd>
+      <dt>Área</dt><dd>{{ empleado.area }}</dd>
+      <dt>Sucursal</dt><dd>{{ empleado.sucursal }}</dd>
+      <dt>Estado</dt><dd><span class="sit {{ empleado.estado|clase_estado }}">{{ empleado.estado }}</span></dd>
+      <dt>Fecha de ingreso</dt><dd>{{ empleado.fecha_ingreso|fecha }}</dd>
+    </dl>
+  </div>
+  <div class="card panel">
+    <h3>Datos personales {% if not completo %}<span class="badge incompleto">Pendiente de completar</span>{% endif %}</h3>
+    <dl class="ficha">
+      <dt>Fecha de nacimiento</dt><dd>{{ empleado.fecha_nacimiento|fecha }}</dd>
+      <dt>Estado civil</dt><dd>{{ empleado.estado_civil or '—' }}</dd>
+      <dt>Dirección</dt><dd>{{ empleado.direccion or '—' }}</dd>
+    </dl>
+    <h3 class="sep-top">Cuenta de acceso</h3>
+    <dl class="ficha">
+      <dt>Último ingreso</dt><dd>{{ cuenta.ultimo_acceso|fecha_hora if cuenta else '—' }}</dd>
+      <dt>Contraseña</dt><dd>{% if not cuenta or cuenta.debe_cambiar %}Inicial (pendiente de cambio){% else %}Personalizada{% endif %}</dd>
+    </dl>
+    <form method="POST" action="/empleados/{{ empleado.id }}/password/restablecer" class="sep-top"
+          onsubmit="return confirm('¿Restablecer la contraseña de {{ empleado.nombre }} a la inicial?');">
+      {{ campo_csrf() }}
+      <button type="submit" class="chico suave"><svg class="ico"><use href="#i-lock"/></svg>Restablecer contraseña</button>
+    </form>
+  </div>
+</div>
+
+{% elif pestana == 'documentos' %}
+<h2>Checklist del expediente</h2>
+<div class="card panel">
+  <p class="ayuda sep">Se marca solo cuando el empleado sube el documento. {{ r.pendientes }} pendiente(s).</p>
+  <ul class="checklist">
+    {% for c in checklist %}
+    <li class="{{ 'hecho' if c.subido else 'falta' }}">
+      <input type="checkbox" id="c{{ c.id }}" disabled {% if c.subido %}checked{% endif %}>
+      <label for="c{{ c.id }}">{{ c.nombre }}</label>
+      <span class="badge {{ 'vigente' if c.subido else 'incompleto' }}">{{ 'Subido' if c.subido else 'Pendiente' }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+<h2>Historial por documento</h2>
+{% include "_documentos.html" %}
+
+{% else %}
+<h2>Historial de cambios</h2>
+{% include "_historial.html" %}
+{% endif %}
+{% include "_vista.html" %}
+{% endblock %}
