@@ -5,6 +5,8 @@ USE hospital_hdd;
 SET NAMES utf8mb4;
 
 -- Primero las tablas hijas, al final las padres
+DROP TABLE IF EXISTS historial_cambios;
+DROP TABLE IF EXISTS usuarios;
 DROP TABLE IF EXISTS archivo_partes;
 DROP TABLE IF EXISTS archivos;
 DROP TABLE IF EXISTS expediente;
@@ -26,7 +28,10 @@ CREATE TABLE empleados (
     area VARCHAR(100) NOT NULL,
     sucursal VARCHAR(50) NOT NULL,
     estado VARCHAR(30) NOT NULL DEFAULT 'Activo',
-    fecha_ingreso DATE NOT NULL
+    fecha_ingreso DATE NOT NULL,
+    fecha_nacimiento DATE NULL,
+    estado_civil VARCHAR(20) NULL,
+    direccion VARCHAR(255) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- requiere_vencimiento = 1: al subir este documento la fecha de vencimiento es obligatoria (DUI)
@@ -69,6 +74,36 @@ CREATE TABLE archivo_partes (
     contenido LONGBLOB NOT NULL,
     PRIMARY KEY (archivo_id, orden),
     FOREIGN KEY (archivo_id) REFERENCES archivos(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Cuenta de acceso de cada empleado. RRHH no tiene fila aquí: entra con su cuenta de Microsoft 365.
+-- La cuenta se crea sola con la contraseña inicial y debe_cambiar = 1 (la aplicación guarda solo el hash).
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    empleado_id INT NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    debe_cambiar TINYINT NOT NULL DEFAULT 1,
+    intentos_fallidos INT NOT NULL DEFAULT 0,
+    bloqueado_hasta DATETIME NULL,
+    ultimo_acceso DATETIME NULL,
+    FOREIGN KEY (empleado_id) REFERENCES empleados(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Bitácora de cambios: una fila por campo modificado. Solo se agregan filas, nunca se editan.
+-- "lote" agrupa los campos que cambiaron en un mismo guardado.
+CREATE TABLE historial_cambios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    empleado_id INT NOT NULL,
+    lote VARCHAR(32) NOT NULL,
+    actor VARCHAR(150) NOT NULL,
+    rol_actor VARCHAR(10) NOT NULL,
+    tipo VARCHAR(20) NOT NULL,
+    campo VARCHAR(100) NOT NULL,
+    valor_anterior TEXT NULL,
+    valor_nuevo TEXT NULL,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_historial_empleado (empleado_id, fecha),
+    FOREIGN KEY (empleado_id) REFERENCES empleados(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO documentos (nombre, requiere_vencimiento) VALUES
