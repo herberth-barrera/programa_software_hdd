@@ -146,6 +146,31 @@ def _leer_claims(id_token):
         return None
 
 
+# Códigos de error de Microsoft que se explican en lenguaje sencillo (solo se muestran códigos, nunca datos secretos)
+_AYUDA_MS = {
+    "AADSTS7000215": "el secreto de cliente es incorrecto (revisa que sea el Valor y no el Id. del secreto)",
+    "AADSTS7000222": "el secreto de cliente expiró; crea uno nuevo en Azure",
+    "AADSTS7000218": "falta el secreto de cliente (revisa MS_CLIENT_SECRET en el archivo .env)",
+    "AADSTS50011": "la dirección de regreso no está registrada en Azure o no coincide con MS_REDIRECT_URI",
+    "AADSTS54005": "ese código ya se usó; vuelve a presionar el botón de Microsoft sin recargar la página",
+    "AADSTS700016": "el identificador de la aplicación (MS_CLIENT_ID) no es el de este directorio",
+    "AADSTS90002": "el identificador del directorio (MS_TENANT_ID) es incorrecto",
+}
+
+
+def _error_microsoft(respuesta):
+    """Arma el mensaje cuando Microsoft no entrega el id_token, con su código de error."""
+    detalle = str(respuesta.get("error_description", "")) if isinstance(respuesta, dict) else ""
+    coincidencia = re.search(r"AADSTS\d+", detalle)
+    codigo = coincidencia.group(0) if coincidencia else ""
+    tipo = str(respuesta.get("error", "")) if isinstance(respuesta, dict) else ""
+    mensaje = "Microsoft no aceptó el inicio de sesión"
+    if codigo or tipo:
+        mensaje += " (%s)" % " · ".join(x for x in (tipo, codigo) if x)
+    ayuda = _AYUDA_MS.get(codigo)
+    return mensaje + (": " + ayuda + "." if ayuda else ". Revisa los datos de Microsoft en el archivo .env.")
+
+
 def completar_login_microsoft(cfg, argumentos):
     """Cambia el código de Microsoft por la identidad. Devuelve (datos, error)."""
     esperado = session.pop("ms_estado", "")
@@ -169,7 +194,7 @@ def completar_login_microsoft(cfg, argumentos):
     except (requests.RequestException, ValueError):
         return None, "No se pudo contactar con Microsoft. Revisa tu conexión a internet."
     if "id_token" not in respuesta:
-        return None, "Microsoft no aceptó el inicio de sesión. Revisa el secreto de cliente en el archivo .env."
+        return None, _error_microsoft(respuesta)
 
     # El token llega directo desde Microsoft por HTTPS y autenticado con el secreto de la app,
     # por eso aquí se validan sus datos sin volver a verificar la firma.
