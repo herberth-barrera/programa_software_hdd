@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Registrar empleado{% endblock %}
 {% block contenido %}
-<div class="pagina-cab"><div><h1>Registrar empleado</h1><p class="sub">Al guardar se crea su expediente con todos los documentos pendientes.</p></div></div>
+<div class="pagina-cab"><div><h1>Registrar empleado</h1><p class="sub">Al guardar se crea su expediente con los documentos que elijas solicitarle.</p></div></div>
 <div class="card form-card">
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="POST" action="/empleados/nuevo">
@@ -39,10 +39,31 @@
       </select></div>
     <div><label>Fecha de ingreso</label><input type="date" name="fecha_ingreso" value="{{ datos.fecha_ingreso }}"></div>
   </div>
+  <div class="sep-top">
+<details class="selector" open>
+  <summary><span>Documentos que se le solicitarán</span><span class="cuenta" data-cuenta>{{ seleccion|length }} de {{ catalogo|length }}</span></summary>
+  <div class="selector-cuerpo">
+    <p class="ayuda">Marca los documentos que este empleado debe subir. Los demás no aparecerán en su perfil.</p>
+    <ul class="checklist">
+      {% for d in catalogo %}
+      <li>
+        <input type="checkbox" name="documentos" value="{{ d.id }}" id="s{{ d.id }}" {% if d.id in seleccion %}checked{% endif %}>
+        <label for="s{{ d.id }}">{{ d.nombre }}</label>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="selector-acc">
+      <button type="button" class="chico suave" data-marcar="todos">Marcar todos</button>
+      <button type="button" class="chico suave" data-marcar="ninguno">Desmarcar todos</button>
+    </div>
+  </div>
+</details>
+  </div>
   <div class="form-pie">
     <button type="submit">Guardar empleado</button>
     <a class="boton secundario" href="/empleados">Cancelar</a>
   </div>
 </form>
 </div>
+<script src="/static/solicitados.js"></script>
 {% endblock %}

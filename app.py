@@ -269,10 +269,12 @@ def obtener_empleados():
     cursor = conexion.cursor(dictionary=True)
     cursor.execute("""
         SELECT e.*,
-               (SELECT COUNT(*) FROM documentos) AS total,
+               (SELECT COUNT(*) FROM expediente x WHERE x.empleado_id = e.id) AS total,
                (SELECT COUNT(DISTINCT a.documento_id) FROM archivos a
+                JOIN expediente x ON x.empleado_id = a.empleado_id AND x.documento_id = a.documento_id
                 WHERE a.empleado_id = e.id) AS con_archivo,
                (SELECT COUNT(*) FROM archivos a
+                JOIN expediente x ON x.empleado_id = a.empleado_id AND x.documento_id = a.documento_id
                 WHERE a.empleado_id = e.id AND a.fecha_vencimiento < CURDATE()
                   AND a.version = (SELECT MAX(a2.version) FROM archivos a2
                                    WHERE a2.empleado_id = a.empleado_id
@@ -290,18 +292,40 @@ def texto_dias(n):
     return "1 día" if n == 1 else "%d días" % n
 
 
+def documentos_solicitados(cursor, emp_id):
+    """Documentos que RRHH le pide a este empleado (una fila en expediente = un documento solicitado)."""
+    cursor.execute("""
+        SELECT d.id, d.nombre, d.requiere_vencimiento
+        FROM expediente x JOIN documentos d ON d.id = x.documento_id
+        WHERE x.empleado_id = %s ORDER BY d.id
+    """, (emp_id,))
+    return cursor.fetchall()
+
+
+def leer_seleccion(cursor):
+    """Lee las casillas de documentos del formulario. Devuelve (ids válidos, error)."""
+    cursor.execute("SELECT id FROM documentos")
+    validos = {str(f["id"]) for f in cursor.fetchall()}
+    marcados = [i for i in request.form.getlist("documentos") if i in validos]
+    ids = sorted({int(i) for i in marcados})
+    if not ids:
+        return ids, "Selecciona al menos un documento que se le solicitará al empleado."
+    return ids, ""
+
+
 def datos_documentos(cursor, emp_id):
     """Archivos agrupados por documento (con versiones), checklist y resumen. Lo usan RRHH y el empleado."""
     cursor.execute("""
         SELECT a.id, a.documento_id, d.nombre AS documento, a.version, a.nombre_original,
                a.tamano, a.fecha_vencimiento, a.fecha_subida
-        FROM archivos a JOIN documentos d ON d.id = a.documento_id
+        FROM archivos a
+        JOIN documentos d ON d.id = a.documento_id
+        JOIN expediente x ON x.empleado_id = a.empleado_id AND x.documento_id = a.documento_id
         WHERE a.empleado_id = %s
         ORDER BY d.id, a.version DESC
     """, (emp_id,))
     filas = cursor.fetchall()
-    cursor.execute("SELECT id, nombre FROM documentos ORDER BY id")
-    todos = cursor.fetchall()
+    todos = documentos_solicitados(cursor, emp_id)
 
     hoy = date.today()
     grupos = []
@@ -529,9 +553,16 @@ def listar():
 def nuevo():
     error = ""
     datos = {"nombre": "", "puesto": "", "area": "", "sucursal": "", "estado": "Activo", "fecha_ingreso": ""}
+    conexion = conectar()
+    cursor = conexion.cursor(dictionary=True)
+    cursor.execute("SELECT id, nombre FROM documentos ORDER BY id")
+    catalogo = cursor.fetchall()
+    seleccion = [d["id"] for d in catalogo]          # por defecto vienen todos marcados
     if request.method == "POST":
         for campo in datos:
             datos[campo] = request.form.get(campo, "").strip()
+        ids_docs, error_docs = leer_seleccion(cursor)
+        seleccion = ids_docs
 
         if "" in datos.values():
             error = "Todos los campos son obligatorios."
@@ -545,9 +576,9 @@ def nuevo():
             error = "Selecciona un estado válido."
         elif not fecha_valida(datos["fecha_ingreso"]):
             error = "La fecha de ingreso no es válida."
+        elif error_docs:
+            error = error_docs
         else:
-            conexion = conectar()
-            cursor = conexion.cursor(dictionary=True)
             codigo = siguiente_codigo(cursor)
             cursor.execute(
                 "INSERT INTO empleados (codigo, nombre, puesto, area, sucursal, estado, fecha_ingreso) "
@@ -555,21 +586,25 @@ def nuevo():
                 (codigo, datos["nombre"], datos["puesto"], datos["area"], datos["sucursal"],
                  datos["estado"], datos["fecha_ingreso"]))
             emp_id = cursor.lastrowid
-            cursor.execute("SELECT id FROM documentos")
-            for doc in cursor.fetchall():
+            for doc_id in ids_docs:
                 cursor.execute(
                     "INSERT INTO expediente (empleado_id, documento_id, entregado) VALUES (%s, %s, 0)",
-                    (emp_id, doc["id"]))
+                    (emp_id, doc_id))
             crear_cuenta(cursor, emp_id)
-            registrar_cambios(cursor, emp_id, "perfil", [("Perfil", "", "Creado con el código " + codigo)])
+            registrar_cambios(cursor, emp_id, "perfil", [
+                ("Perfil", "", "Creado con el código " + codigo),
+                ("Documentos solicitados", "", "%d documento(s)" % len(ids_docs))])
             conexion.commit()
             cursor.close()
             conexion.close()
             flash("Empleado registrado con el código %s. Su contraseña inicial es %s y deberá cambiarla "
                   "al ingresar." % (codigo, seg.PASSWORD_INICIAL), "ok")
             return redirect("/empleados")
+    cursor.close()
+    conexion.close()
     return render_template("nuevo.html", error=error, datos=datos, sucursales=SUCURSALES,
-                           puestos=PUESTOS, areas=AREAS, estados=ESTADOS)
+                           puestos=PUESTOS, areas=AREAS, estados=ESTADOS,
+                           catalogo=catalogo, seleccion=seleccion)
 
 
 # Perfil del empleado (panel de RRHH, solo lectura de documentos)
@@ -581,6 +616,10 @@ def perfil_rrhh(emp_id):
     empleado = cargar_empleado(cursor, emp_id)
     grupos, checklist, pendientes, r = datos_documentos(cursor, emp_id)
     historial = leer_historial(cursor, emp_id)
+    ids_solicitados = {c["id"] for c in checklist}
+    cursor.execute("SELECT id, nombre FROM documentos ORDER BY id")
+    catalogo = [{"id": d["id"], "nombre": d["nombre"], "solicitado": d["id"] in ids_solicitados}
+                for d in cursor.fetchall()]
     cursor.execute("SELECT debe_cambiar, ultimo_acceso FROM usuarios WHERE empleado_id = %s", (emp_id,))
     cuenta = cursor.fetchone()
     cursor.close()
@@ -589,9 +628,49 @@ def perfil_rrhh(emp_id):
     if pestana not in ("datos", "documentos", "historial"):
         pestana = "datos"
     return render_template("perfil_rrhh.html", empleado=empleado, grupos=grupos, checklist=checklist,
-                           pendientes=pendientes, r=r, historial=historial, cuenta=cuenta,
+                           pendientes=pendientes, r=r, historial=historial, cuenta=cuenta, catalogo=catalogo,
                            pestana=pestana, completo=perfil_completo(empleado),
                            expediente_listo=(r["total"] > 0 and r["subidos"] == r["total"]))
+
+
+@app.route("/empleados/<int:emp_id>/documentos-solicitados", methods=["POST"])
+@seg.solo_rrhh
+def guardar_solicitados(emp_id):
+    conexion = conectar()
+    cursor = conexion.cursor(dictionary=True)
+    empleado = cargar_empleado(cursor, emp_id)
+    ids, error = leer_seleccion(cursor)
+    if error:
+        cursor.close()
+        conexion.close()
+        flash(error, "error")
+        return redirect("/empleados/%d?pestana=documentos" % emp_id)
+    cursor.execute("SELECT id, nombre FROM documentos")
+    nombres = {f["id"]: f["nombre"] for f in cursor.fetchall()}
+    antes = {d["id"] for d in documentos_solicitados(cursor, emp_id)}
+    despues = set(ids)
+    quitados = sorted(antes - despues)
+    agregados = sorted(despues - antes)
+    if not quitados and not agregados:
+        cursor.close()
+        conexion.close()
+        flash("No hubo cambios en los documentos solicitados.", "ok")
+        return redirect("/empleados/%d?pestana=documentos" % emp_id)
+    # Quitar un documento no borra sus archivos: solo deja de pedirse (y de contar)
+    for doc_id in quitados:
+        cursor.execute("DELETE FROM expediente WHERE empleado_id = %s AND documento_id = %s", (emp_id, doc_id))
+    for doc_id in agregados:
+        cursor.execute("INSERT INTO expediente (empleado_id, documento_id, entregado) VALUES (%s, %s, 0)",
+                       (emp_id, doc_id))
+    cambios = [("Documentos solicitados", "%d documento(s)" % len(antes), "%d documento(s)" % len(despues))]
+    cambios += [("Documento solicitado", "", nombres[i]) for i in agregados]
+    cambios += [("Documento solicitado", nombres[i], "") for i in quitados]
+    registrar_cambios(cursor, emp_id, "expediente", cambios)
+    conexion.commit()
+    cursor.close()
+    conexion.close()
+    flash("Se actualizaron los documentos solicitados a %s: ahora son %d." % (empleado["codigo"], len(despues)), "ok")
+    return redirect("/empleados/%d?pestana=documentos" % emp_id)
 
 
 @app.route("/empleados/<int:emp_id>/archivos")
@@ -728,12 +807,14 @@ def descargar_expediente(emp_id):
     conexion = conectar()
     cursor = conexion.cursor(dictionary=True)
     empleado = cargar_empleado(cursor, emp_id)
-    cursor.execute("SELECT COUNT(*) AS n FROM documentos")
+    cursor.execute("SELECT COUNT(*) AS n FROM expediente WHERE empleado_id = %s", (emp_id,))
     total = cursor.fetchone()["n"]
-    # La versión más reciente de cada documento
+    # La versión más reciente de cada documento solicitado
     cursor.execute("""
         SELECT a.id, a.documento_id, d.nombre AS documento, a.version, a.nombre_original
-        FROM archivos a JOIN documentos d ON d.id = a.documento_id
+        FROM archivos a
+        JOIN documentos d ON d.id = a.documento_id
+        JOIN expediente x ON x.empleado_id = a.empleado_id AND x.documento_id = a.documento_id
         WHERE a.empleado_id = %s
           AND a.version = (SELECT MAX(a2.version) FROM archivos a2
                            WHERE a2.empleado_id = a.empleado_id AND a2.documento_id = a.documento_id)
@@ -892,8 +973,7 @@ def subir():
     cursor = conexion.cursor(dictionary=True)
     empleado = cargar_empleado(cursor, session["empleado_id"])
     emp_id = empleado["id"]
-    cursor.execute("SELECT id, nombre, requiere_vencimiento FROM documentos ORDER BY id")
-    documentos = cursor.fetchall()
+    documentos = documentos_solicitados(cursor, emp_id)      # solo los que RRHH le pidió
 
     error = ""
     datos = {"documento_id": request.args.get("documento", ""), "fecha_vencimiento": ""}
@@ -961,9 +1041,6 @@ def subir():
                     "INSERT INTO archivo_partes (archivo_id, orden, contenido) VALUES (%s, %s, %s)",
                     (archivo_id, orden, pedazo))
                 orden = orden + 1
-            cursor.execute(
-                "UPDATE expediente SET entregado = 1 WHERE empleado_id = %s AND documento_id = %s",
-                (emp_id, documento["id"]))
             anterior = ("v%d" % (version - 1)) if version > 1 else ""
             registrar_cambios(cursor, emp_id, "documento", [(
                 documento["nombre"], anterior, "v%d · %s (%s)" % (version, nombre, formato_tamano(tamano)))])

@@ -327,3 +327,17 @@ button.suave:hover { background: #d9e5f7; }
 .sidebar-pie .peq, .sidebar-pie strong { overflow-wrap: anywhere; }
 .pestanas-pagina { max-width: 680px; }
 .pestanas a { white-space: nowrap; }
+
+/* Selector de documentos solicitados (desplegable con casillas) */
+.selector { border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.selector summary { cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; font-weight: 600; color: var(--navy-2); }
+.selector summary .cuenta { font-weight: 600; font-size: 12px; background: #eaf1fb; color: var(--navy-2);
+  padding: 3px 10px; border-radius: 999px; }
+.selector summary .cuenta.vacio { background: #fdecec; color: #b42318; }
+.selector-cuerpo { padding: 4px 16px 16px; border-top: 1px solid var(--line); }
+.selector-cuerpo .ayuda { margin: 12px 0; }
+.selector-acc { display: flex; gap: 8px; margin-top: 12px; }
+.solicitar { padding: 16px; margin-bottom: 20px; }
+.selector-pie { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+.form-card .selector { margin-top: 24px; }

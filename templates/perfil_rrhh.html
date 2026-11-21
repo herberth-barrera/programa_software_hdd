@@ -67,9 +67,35 @@
 </div>
 
 {% elif pestana == 'documentos' %}
+<h2>Documentos solicitados</h2>
+<form method="POST" action="/empleados/{{ empleado.id }}/documentos-solicitados" class="card solicitar">
+  {{ campo_csrf() }}
+<details class="selector" >
+  <summary><span>Documentos que se le solicitarán</span><span class="cuenta" data-cuenta>{{ r.total }} de {{ catalogo|length }}</span></summary>
+  <div class="selector-cuerpo">
+    <p class="ayuda">Marca los documentos que este empleado debe subir. Los demás no aparecerán en su perfil.</p>
+    <ul class="checklist">
+      {% for d in catalogo %}
+      <li>
+        <input type="checkbox" name="documentos" value="{{ d.id }}" id="s{{ d.id }}" {% if d.solicitado %}checked{% endif %}>
+        <label for="s{{ d.id }}">{{ d.nombre }}</label>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="selector-acc">
+      <button type="button" class="chico suave" data-marcar="todos">Marcar todos</button>
+      <button type="button" class="chico suave" data-marcar="ninguno">Desmarcar todos</button>
+    </div>
+  </div>
+</details>
+  <div class="selector-pie">
+    <button type="submit" class="chico">Guardar documentos solicitados</button>
+    <span class="ayuda">Quitar un documento no borra sus archivos; solo deja de pedirse y de contar.</span>
+  </div>
+</form>
 <h2>Checklist del expediente</h2>
 <div class="card panel">
-  <p class="ayuda sep">Se marca solo cuando el empleado sube el documento. {{ r.pendientes }} pendiente(s).</p>
+  <p class="ayuda sep">Solo aparecen los documentos solicitados a este empleado. Se marca solo cuando él sube el documento. {{ r.pendientes }} pendiente(s).</p>
   <ul class="checklist">
     {% for c in checklist %}
     <li class="{{ 'hecho' if c.subido else 'falta' }}">
@@ -88,4 +114,5 @@
 {% include "_historial.html" %}
 {% endif %}
 {% include "_vista.html" %}
+<script src="/static/solicitados.js"></script>
 {% endblock %}
