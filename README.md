@@ -153,6 +153,17 @@ RRHH_DOMINIO=keyinstitute.edu.sv
 ```
 El secreto equivale a una contraseña: no se comparte ni se sube a GitHub (`.gitignore` ya excluye `.env`). Si se expone, se elimina en Entra y se crea otro. Los secretos tienen fecha de caducidad; al vencer hay que generar uno nuevo y actualizar `.env`.
 
+## Publicación en internet (alwaysdata)
+El sistema puede publicarse en [alwaysdata](https://www.alwaysdata.com) (Python WSGI + MariaDB/MySQL) para usarlo desde cualquier dispositivo.
+
+1. **Base de datos**: en el panel, *Databases > MySQL*, crea una base y un usuario. En su phpMyAdmin importa `crear_bd_nube.sql` (igual que `crear_bd.sql`, pero sin crear la base).
+2. **Código**: activa *Remote access > SSH* y, por SSH, ejecuta `git clone` del repositorio, crea un entorno virtual (`python -m venv venv`) e instala `pip install -r requirements.txt`.
+3. **Configuración**: crea el archivo `.env` en el servidor (nunca en GitHub) con `HDD_ENTORNO=nube`, los datos de la base (`DB_HOST`, `DB_USUARIO`, `DB_PASSWORD`, `DB_NOMBRE`), `HDD_SECRET_KEY`, las variables de Microsoft y `MS_REDIRECT_URI` con la dirección HTTPS del sitio. La plantilla está en `.env.ejemplo`.
+4. **Sitio**: en *Web > Sites > Add*, tipo **Python WSGI**, ruta `wsgi.py` y el entorno virtual creado.
+5. **Microsoft 365**: en Entra, *Autenticación*, agrega `https://TU-CUENTA.alwaysdata.net/auth/microsoft/callback` como URI de redirección (se conserva la de `localhost` para desarrollo).
+
+Con `HDD_ENTORNO=nube` el sistema desactiva la guardia de servicios de XAMPP y envía las cookies de sesión solo por HTTPS. Sin esa variable se comporta como en local. Los archivos se guardan dentro de la base de datos, así que cuentan contra el espacio del plan.
+
 ## Actualizar una base de datos existente
 Si ya tienes datos de una versión anterior y no quieres perderlos, en phpMyAdmin selecciona la base `hospital_hdd` y ejecuta `migracion_v3.sql` (pestaña *Importar*). Agrega las columnas personales a `empleados`, crea las tablas `usuarios` e `historial_cambios` y sincroniza el checklist con los archivos ya subidos. Está pensada para MariaDB (XAMPP) y se ejecuta una sola vez. Las cuentas de los empleados existentes se crean solas en su primer ingreso.
 
@@ -167,6 +178,8 @@ Si ya aplicaste la v3, ejecuta además `migracion_v4.sql` para activar los **doc
 ├── crear_bd.sql         Esquema de la base de datos y datos de ejemplo (instalación nueva)
 ├── migracion_v3.sql     Actualiza una base existente sin perder datos
 ├── migracion_v4.sql     Documentos solicitados por empleado (sobre la v3)
+├── crear_bd_nube.sql    Esquema para un hosting (sin crear la base de datos)
+├── wsgi.py              Punto de entrada para publicar en alwaysdata
 ├── .env.ejemplo         Plantilla de configuración (copiar como .env, que no se sube a GitHub)
 ├── requirements.txt     Dependencias: flask, mysql-connector-python, requests, pypdf, reportlab
 ├── README.md

@@ -22,6 +22,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("HDD_SECRET_KEY") or secrets.token_hex(32)
 app.permanent_session_lifetime = timedelta(hours=8)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
+# HDD_ENTORNO=nube cuando el sistema corre en un hosting (alwaysdata): sin la guardia de XAMPP y con cookies solo por HTTPS
+EN_NUBE = os.environ.get("HDD_ENTORNO", "").strip().lower() == "nube"
+if EN_NUBE:
+    app.config["SESSION_COOKIE_SECURE"] = True
 app.jinja_env.globals["campo_csrf"] = seg.campo_csrf
 
 # Menu Desplegable
@@ -70,9 +74,13 @@ PUBLICAS = {"static", "login", "microsoft_inicio", "microsoft_callback"}
 
 
 def conectar():
-    # En XAMPP el usuario es root y la contraseña va vacía
-    return mysql.connector.connect(host="localhost", user="root", password="",
-                                   database="hospital_hdd", charset="utf8mb4")
+    # Sin variables, se usa XAMPP (root, sin contraseña). En un hosting se definen en el archivo .env
+    return mysql.connector.connect(
+        host=os.environ.get("DB_HOST", "localhost"),
+        user=os.environ.get("DB_USUARIO", "root"),
+        password=os.environ.get("DB_PASSWORD", ""),
+        database=os.environ.get("DB_NOMBRE", "hospital_hdd"),
+        charset="utf8mb4")
 
 
 def puerto_abierto(host, puerto):
@@ -95,8 +103,8 @@ def servicios_caidos():
 # ---------- Filtros que se ejecutan antes de cada petición (en este orden) ----------
 @app.before_request
 def verificar_servicios():
-    if request.endpoint == "static":
-        return None
+    if request.endpoint == "static" or EN_NUBE:
+        return None          # en la nube no hay Apache/MySQL de XAMPP que vigilar
     caidos = servicios_caidos()
     if caidos:
         estado = [{"nombre": n, "puerto": p, "activo": n not in caidos} for n, h, p in SERVICIOS]
