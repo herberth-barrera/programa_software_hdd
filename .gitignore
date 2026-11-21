@@ -1,0 +1,5 @@
+# Datos privados: nunca subir a GitHub
+.env
+venv/
+__pycache__/
+*.pyc
