@@ -41,6 +41,7 @@ CREATE TABLE documentos (
     requiere_vencimiento TINYINT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Una fila = un documento que RRHH le solicita a ese empleado (v4)
 CREATE TABLE expediente (
     empleado_id INT NOT NULL,
     documento_id INT NOT NULL,

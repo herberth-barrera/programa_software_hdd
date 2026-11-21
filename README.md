@@ -43,8 +43,8 @@ El área de Talento Humano necesita saber, en cualquier momento, qué empleados 
 | **Cómo ingresa** | Botón *Iniciar sesión con Microsoft* con su cuenta `@keyinstitute.edu.sv` | Código de empleado (`HDD-0001`) y contraseña |
 | **Ve** | Todos los perfiles, documentos e historiales | Únicamente su propio expediente |
 | **Edita** | Todos los datos del perfil, incluidos los personales, para corregir errores | Solo fecha de nacimiento, estado civil y dirección |
-| **Documentos** | Los revisa: previsualiza y descarga. **No sube ni reemplaza archivos** | Sube y reemplaza sus propios documentos (cada subida es una versión nueva) |
-| **Expediente completo** | Descarga un solo PDF con todos los documentos cuando el empleado terminó de subirlos | No aplica |
+| **Documentos** | **Elige cuáles se le solicitan a cada empleado**; los revisa, previsualiza y descarga. **No sube ni reemplaza archivos** | Ve y sube únicamente los documentos que RRHH le solicitó (cada subida es una versión nueva) |
+| **Expediente completo** | Descarga un solo PDF con los documentos solicitados cuando el empleado terminó de subirlos | No aplica |
 | **Historial** | Ve el historial de cualquier perfil | Ve únicamente el de su perfil |
 
 Contraseña inicial de los empleados: `123456789`. El sistema obliga a cambiarla en el primer ingreso (mínimo 8 caracteres, con letras y números). Tras 5 intentos fallidos, la cuenta se bloquea 10 minutos. Un empleado con estado *Inactivo* no puede ingresar.
@@ -60,10 +60,11 @@ Contraseña inicial de los empleados: `123456789`. El sistema obliga a cambiarla
 - Eliminación **restrictiva**: un perfil con archivos o documentos asociados no puede borrarse desde el sistema.
 
 **Gestión documental**
+- **Documentos solicitados por empleado**: RRHH elige, desde un desplegable con casillas que siempre muestra los 12 documentos del catálogo, cuáles debe entregar cada perfil (por ejemplo, 8 de 12 para un puesto operativo). Los demás no aparecen en el perfil del empleado, ni en su checklist, ni en su formulario de subida, y el servidor rechaza cualquier intento de subirlos. Se define al registrar al empleado y se puede ajustar después; quitar un documento no borra sus archivos, solo deja de pedirse y de contar.
 - Portal del empleado con su avance, sus documentos pendientes y botón de subida con **arrastrar y soltar**, validación inmediata y barra de progreso.
 - **Checklist automático**: el documento se marca como entregado en cuanto el empleado lo sube; nadie lo marca a mano.
 - **Vista previa** de los PDF en una ventana flotante, sin descargarlos.
-- **Expediente consolidado**: RRHH descarga un único PDF con portada, índice, marcadores y la versión más reciente de cada documento (se habilita cuando están los 12).
+- **Expediente consolidado**: RRHH descarga un único PDF con portada, índice, marcadores y la versión más reciente de cada documento (se habilita cuando están todos los solicitados al empleado).
 - **Control de versiones**: subir un documento nunca reemplaza al anterior; se conserva todo el historial.
 - Estado automático por documento: *Vigente*, *Vencido* o *Versión anterior*, con aviso de días para el vencimiento.
 - Descarga de cualquier versión, con permisos: RRHH accede a todas y cada empleado solo a las suyas.
@@ -155,6 +156,8 @@ El secreto equivale a una contraseña: no se comparte ni se sube a GitHub (`.git
 ## Actualizar una base de datos existente
 Si ya tienes datos de una versión anterior y no quieres perderlos, en phpMyAdmin selecciona la base `hospital_hdd` y ejecuta `migracion_v3.sql` (pestaña *Importar*). Agrega las columnas personales a `empleados`, crea las tablas `usuarios` e `historial_cambios` y sincroniza el checklist con los archivos ya subidos. Está pensada para MariaDB (XAMPP) y se ejecuta una sola vez. Las cuentas de los empleados existentes se crean solas en su primer ingreso.
 
+Si ya aplicaste la v3, ejecuta además `migracion_v4.sql` para activar los **documentos solicitados por empleado**. No modifica la estructura: deja a todos los empleados existentes con los 12 documentos solicitados, para que RRHH ajuste perfil por perfil. Se puede ejecutar más de una vez sin duplicar nada.
+
 ## Estructura del proyecto
 ```
 .
@@ -163,6 +166,7 @@ Si ya tienes datos de una versión anterior y no quieres perderlos, en phpMyAdmi
 ├── expediente_pdf.py    Construcción del expediente consolidado en PDF
 ├── crear_bd.sql         Esquema de la base de datos y datos de ejemplo (instalación nueva)
 ├── migracion_v3.sql     Actualiza una base existente sin perder datos
+├── migracion_v4.sql     Documentos solicitados por empleado (sobre la v3)
 ├── .env.ejemplo         Plantilla de configuración (copiar como .env, que no se sube a GitHub)
 ├── requirements.txt     Dependencias: flask, mysql-connector-python, requests, pypdf, reportlab
 ├── README.md
@@ -187,6 +191,7 @@ Si ya tienes datos de una versión anterior y no quieres perderlos, en phpMyAdmi
 └── static/
     ├── style.css        Hoja de estilos única del sistema
     ├── subir.js         Arrastrar y soltar, validación y progreso
+    ├── solicitados.js   Desplegable de documentos solicitados (contador y marcar todos)
     ├── vista.js         Ventana de vista previa de PDF
     └── logo.png         Logotipo del hospital
 ```
@@ -201,7 +206,7 @@ Base de datos `hospital_hdd`.
 | `usuarios` | Cuenta de acceso de cada empleado (RRHH entra con Microsoft y no tiene fila) | `id` (PK), `empleado_id` (FK, único), `password_hash`, `debe_cambiar`, `intentos_fallidos`, `bloqueado_hasta`, `ultimo_acceso` |
 | `historial_cambios` | Bitácora de cambios por perfil (solo se agregan filas) | `id` (PK), `empleado_id` (FK), `lote`, `actor`, `rol_actor`, `tipo`, `campo`, `valor_anterior`, `valor_nuevo`, `fecha` |
 | `documentos` | Catálogo de documentos requeridos | `id` (PK), `nombre`, `requiere_vencimiento` |
-| `expediente` | Checklist por empleado; `entregado` se marca solo al subir el archivo | `empleado_id` (PK, FK), `documento_id` (PK, FK), `entregado` |
+| `expediente` | Documentos que RRHH le solicita a cada empleado: una fila = un documento solicitado (`entregado` ya no se usa; el avance sale de los archivos) | `empleado_id` (PK, FK), `documento_id` (PK, FK), `entregado` |
 | `archivos` | Cada versión subida | `id` (PK), `empleado_id` (FK), `documento_id` (FK), `version`, `nombre_original`, `tamano`, `contenido` (LONGBLOB), `fecha_vencimiento`, `fecha_subida` |
 | `archivo_partes` | Resto de cada archivo en bloques de 256 KB | `archivo_id` (PK, FK), `orden` (PK), `contenido` (LONGBLOB) |
 
@@ -238,6 +243,7 @@ El registro se escribe en la misma transacción que el cambio: si el cambio fall
 ## Reglas de negocio y seguridad
 - El código de empleado lo asigna el servidor; cualquier valor enviado desde el formulario se ignora.
 - Los menús desplegables se validan también en el servidor: un valor fuera de las listas se rechaza.
+- Un empleado solo puede ver y subir los documentos que RRHH le solicitó, y el servidor lo valida; un perfil siempre debe tener al menos un documento solicitado.
 - Un perfil solo puede eliminarse si no tiene archivos subidos; en caso contrario, se recomienda cambiar su estado a *Inactivo*.
 - Los nombres de archivo se limpian y nunca se usan como ruta en disco, porque el contenido vive en la base de datos.
 - Todas las consultas son parametrizadas.
@@ -262,9 +268,10 @@ El registro se escribe en la misma transacción que el cambio: si el cambio fall
 | Ruta | Método | Función |
 |---|---|---|
 | `/empleados` | GET | Panel con indicadores y listado de empleados |
-| `/empleados/nuevo` | GET, POST | Registro con código y cuenta automáticos |
+| `/empleados/nuevo` | GET, POST | Registro con código y cuenta automáticos, y selección de documentos solicitados |
 | `/empleados/<id>` | GET | Perfil: datos, documentos (checklist) e historial |
 | `/empleados/editar/<id>` | GET, POST | Edición de perfil |
+| `/empleados/<id>/documentos-solicitados` | POST | Define qué documentos se le solicitan al empleado |
 | `/empleados/<id>/password/restablecer` | POST | Devuelve la contraseña a la inicial |
 | `/empleados/<id>/expediente.pdf` | GET | Expediente completo en un solo PDF |
 | `/empleados/eliminar/<id>` | POST | Eliminación restrictiva |
